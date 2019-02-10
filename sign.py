@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import time
+import time, argparse
 from random import choice
 from requests import Session
 
@@ -28,11 +28,18 @@ class PanicSign(object):
         'pink'
     ]
 
-    def __init__(self):
+    MODES = [
+        'rainbow',
+        'rainbow_alt',
+        'random'
+    ]
+
+    def __init__(self, timewait=10):
         sess = Session()
         sess.headers.update({'X-RateLimit-Limit': '1000'})
         sess.headers.update({'X-RateLimit-Remaining': '1000'})
         self._sess = sess
+        self.timewait = timewait
 
     def _request(self, method, path, params=None, data=None):
         url = '{}{}'.format(self.BASE, path)
@@ -56,6 +63,7 @@ class PanicSign(object):
 
     def set_colors(self, color1, color2):
         if color1 in self.COLORS and color2 in self.COLORS:
+            print('Top: {}, Bottom: {}'.format(color1, color2))
             path = '/set/{}/{}'.format(color1, color2)
             if self._request('GET', path).status_code == 200:
                 '''Response returns text: "Done", make a JSON response instead'''
@@ -63,38 +71,47 @@ class PanicSign(object):
         else:
             return '{ "status": "unsuccessful", "message": "color choice(s) not valid" }'
 
+    def rainbow(self):
+        for color in self.COLORS:
+            self.set_colors(color, color)
+            time.sleep(self.timewait)
 
+    def rainbow_alt(self):
+        print('Running rainbow alternating sequence...')
+        for i in range(len(self.COLORS)):
+            color1 = self.COLORS[i]
+            try:
+                color2 = self.COLORS[i+1]
+            except IndexError:
+                color2 = self.COLORS[0]
 
-def rainbow():
-    print('Running rainbow sequence...')
+            self.set_colors(color1, color2)
+            time.sleep(self.timewait)
+
+    def random(self):
+        print('Running random color sequence...')
+        color1 = choice(self.COLORS)
+        color2 = choice(self.COLORS)
+        self.set_colors(color1, color2)
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Modify the Panic Sign')
+    parser.add_argument('--top', choices=PanicSign.COLORS, help='Color to assign to top of sign')
+    parser.add_argument('--bottom', choices=PanicSign.COLORS, help='Color to assign to bottom of sign')
+    parser.add_argument('--mode', choices=PanicSign.MODES, help='Mode to run')
+    parser.add_argument('--wait', help='Time to wait between changing colors')
+    args = parser.parse_args()
+
     panic = PanicSign()
-    for color in panic.COLORS:
-        print('Top: {}, Bottom: {}'.format(color, color))
-        panic.set_colors(color, color)
-        time.sleep(10)
+    if args.wait:
+        panic = panic = PanicSign(args.wait)
 
-def rainbow_alt():
-    print('Running rainbow alternating sequence...')
-    panic = PanicSign()
-    for i in range(len(panic.COLORS)):
-        color1 = panic.COLORS[i]
-        try:
-            color2 = panic.COLORS[i+1]
-        except IndexError:
-            color2 = panic.COLORS[0]
+    if args.top and args.bottom:
+        panic.set_colors(args.top, args.bottom)
 
-        print('Top: {}, Bottom: {}'.format(color1, color2))
-        panic.set_colors(color1, color2)
-        time.sleep(10)
-
-def random():
-    print('Running random color sequence...')
-    panic = PanicSign()
-    color1 = choice(panic.COLORS)
-    color2 = choice(panic.COLORS)
-    print('Top: {}, Bottom: {}'.format(color1, color2))
-    panic.set_colors(color1, color2)
-
-#rainbow()
-#rainbow_alt()
-random()
+    if args.mode == 'rainbow':
+        panic.rainbow()
+    elif args.mode == 'rainbow_alt':
+        panic.rainbow_alt()
+    elif args.mode == 'random':
+        panic.random()
