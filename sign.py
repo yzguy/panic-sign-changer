@@ -86,7 +86,7 @@ class PanicSign(object):
                 color2 = self.COLORS[0]
 
             self.set_colors(color1, color2)
-            time.sleep(self.timewait)
+            time.sleep(int(self.timewait))
 
     def random(self):
         print('Running random color sequence...')
